@@ -10,6 +10,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/iancoleman/strcase"
 	"github.com/jessevdk/go-flags"
@@ -21,6 +22,7 @@ func main() {
 		TypeName string `long:"typename"`
 		VarName  string `long:"varname"`
 		Package  string `long:"package"`
+		Fields   string `long:"fields"`
 	}
 
 	args, err := flags.Parse(&opts)
@@ -50,18 +52,24 @@ func main() {
 		log.Fatal("--varname must be specified")
 	}
 
+	var fields []string
+	if opts.Fields != "" {
+		fields = strings.Split(opts.Fields, ",")
+		sort.Strings(fields)
+	}
+
 	filename := args[0]
 	v, err := loadJSON(filename)
 	if err != nil {
 		log.Fatalf("failed to parse JSON: %s", err)
 	}
 
-	typ, err := detectTypeOfItem(v)
+	typ, err := detectTypeOfItem(v, fields)
 	if err != nil {
 		log.Fatalf("failed to detect JSON type: %s", err)
 	}
 
-	g := NewGenerator()
+	g := NewGenerator(fields)
 	g.Printlnf("package %s", opts.Package)
 	g.Printlnf("")
 	g.Printlnf("type %s %s", opts.TypeName, typ.ToGoType())
@@ -70,7 +78,7 @@ func main() {
 	g.Printlnf("var %s = []%s {", opts.VarName, opts.TypeName)
 	a := v.([]interface{})
 	for _, e := range a {
-		g.Printlnf(toLiteral(e, typ) + ",")
+		g.Printlnf(g.toLiteral(e, typ) + ",")
 	}
 	g.Printlnf("}")
 
@@ -92,56 +100,6 @@ func main() {
 	out.Write(src)
 }
 
-func toLiteral(v interface{}, typ *JSONType) string {
-	switch v := v.(type) {
-	case map[string]interface{}:
-		if typ.Object == nil {
-			panic("assertion error")
-		}
-
-		keys := make([]string, 0, len(v))
-		for k := range v {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-
-		buf := &bytes.Buffer{}
-		buf.WriteString("{\n")
-		for _, k := range keys {
-			e := v[k]
-			ctyp := typ.Object[k]
-			buf.WriteString(fmt.Sprintf("%s: %s,\n", strcase.ToCamel(
-				k), toLiteral(e, ctyp)))
-		}
-		buf.WriteString("}")
-		return buf.String()
-	case []interface{}:
-		if typ.Array == nil {
-			panic("assertion error")
-		}
-
-		buf := &bytes.Buffer{}
-		buf.WriteString(fmt.Sprintf("[]%s{\n", typ.Array.ToGoType()))
-		for _, e := range v {
-			buf.WriteString(toLiteral(e, typ.Array))
-			buf.WriteString(",\n")
-		}
-		buf.WriteString("}")
-		return buf.String()
-	case string:
-		return strconv.Quote(v)
-	case float64:
-		// TODO
-		return strconv.FormatFloat(v, 'f', -1, 64)
-	case bool:
-		return strconv.FormatBool(v)
-	case nil:
-		return "null"
-	}
-
-	panic(fmt.Sprintf("unknown type of value: %#v", v))
-}
-
 func loadJSON(filename string) (interface{}, error) {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -159,11 +117,70 @@ func loadJSON(filename string) (interface{}, error) {
 }
 
 type Generator struct {
-	buf *bytes.Buffer
+	buf    *bytes.Buffer
+	fields []string
 }
 
-func NewGenerator() *Generator {
-	return &Generator{&bytes.Buffer{}}
+func NewGenerator(fields []string) *Generator {
+	return &Generator{
+		buf:    &bytes.Buffer{},
+		fields: fields,
+	}
+}
+
+func (g *Generator) toLiteral(v interface{}, typ *JSONType) string {
+	switch v := v.(type) {
+	case map[string]interface{}:
+		if typ.Object == nil {
+			panic("assertion error")
+		}
+
+		var keys []string
+		if g.fields == nil {
+			keys = make([]string, 0, len(v))
+			for k := range v {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+		} else {
+			keys = g.fields
+		}
+
+		buf := &bytes.Buffer{}
+		buf.WriteString("{\n")
+		for _, k := range keys {
+			e := v[k]
+			ctyp := typ.Object[k]
+			buf.WriteString(fmt.Sprintf("%s: %s,\n", strcase.ToCamel(
+				k), g.toLiteral(e, ctyp)))
+		}
+		buf.WriteString("}")
+		return buf.String()
+	case []interface{}:
+		if typ.Array == nil {
+			panic("assertion error")
+		}
+
+		buf := &bytes.Buffer{}
+		buf.WriteString(fmt.Sprintf("[]%s{\n", typ.Array.ToGoType()))
+		for _, e := range v {
+			buf.WriteString(g.toLiteral(e, typ.Array))
+			buf.WriteString(",\n")
+		}
+		buf.WriteString("}")
+		return buf.String()
+	case string:
+		return strconv.Quote(v)
+	case float64:
+		// TODO
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	case bool:
+		return strconv.FormatBool(v)
+	case nil:
+		return "null"
+	}
+
+	panic(fmt.Sprintf("unknown type of value: %#v", v))
 }
 
 func (g *Generator) Printlnf(format string, args ...interface{}) {

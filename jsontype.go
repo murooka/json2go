@@ -82,7 +82,7 @@ func (t *JSONType) Merge(u *JSONType) *JSONType {
 	return res
 }
 
-func detectTypeOfItem(v interface{}) (*JSONType, error) {
+func detectTypeOfItem(v interface{}, fields []string) (*JSONType, error) {
 	a, ok := v.([]interface{})
 	if !ok {
 		return nil, fmt.Errorf("root value must be array")
@@ -90,24 +90,34 @@ func detectTypeOfItem(v interface{}) (*JSONType, error) {
 
 	var typ *JSONType = nil
 	for _, e := range a {
-		typ = typ.Merge(detectType(e))
+		typ = typ.Merge(detectType(e, fields))
 	}
 
 	return typ, nil
 }
 
-func detectType(v interface{}) *JSONType {
+func detectType(v interface{}, fields []string) *JSONType {
 	t := &JSONType{}
 
 	switch v := v.(type) {
 	case map[string]interface{}:
 		t.Object = map[string]*JSONType{}
-		for key, val := range v {
-			t.Object[key] = t.Object[key].Merge(detectType(val))
+		var keys []string
+		if fields == nil {
+			keys = make([]string, 0, len(v))
+			for key := range v {
+				keys = append(keys, key)
+			}
+		} else {
+			keys = fields
+		}
+		for _, key := range keys {
+			val := v[key]
+			t.Object[key] = t.Object[key].Merge(detectType(val, fields))
 		}
 	case []interface{}:
 		for _, val := range v {
-			t.Array = t.Array.Merge(detectType(val))
+			t.Array = t.Array.Merge(detectType(val, fields))
 		}
 	case string:
 		t.IsString = true
