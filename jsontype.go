@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/iancoleman/strcase"
 )
@@ -39,7 +40,14 @@ func (t *JSONType) ToGoType() string {
 
 	if t.Object != nil {
 		s := fmt.Sprintf("struct{\n")
-		for key, typ := range t.Object {
+		keys := make([]string, 0, len(t.Object))
+		for key := range t.Object {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		for _, key := range keys {
+			typ := t.Object[key]
 			s += fmt.Sprintf("%s %s\n", strcase.ToCamel(key), typ.ToGoType())
 		}
 		s += fmt.Sprintf("}\n")

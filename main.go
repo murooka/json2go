@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 
 	"github.com/iancoleman/strcase"
@@ -98,9 +99,16 @@ func toLiteral(v interface{}, typ *JSONType) string {
 			panic("assertion error")
 		}
 
+		keys := make([]string, 0, len(v))
+		for k := range v {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
 		buf := &bytes.Buffer{}
 		buf.WriteString("{\n")
-		for k, e := range v {
+		for _, k := range keys {
+			e := v[k]
 			ctyp := typ.Object[k]
 			buf.WriteString(fmt.Sprintf("%s: %s,\n", strcase.ToCamel(
 				k), toLiteral(e, ctyp)))
