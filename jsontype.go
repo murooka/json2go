@@ -122,8 +122,11 @@ func detectType(v interface{}, fields []string) *JSONType {
 	case string:
 		t.IsString = true
 	case float64:
-		// TODO
-		t.IsNumber = true
+		if isInt(v) {
+			t.IsInteger = true
+		} else {
+			t.IsNumber = true
+		}
 	case bool:
 		t.IsBoolean = true
 	case nil:
@@ -131,4 +134,8 @@ func detectType(v interface{}, fields []string) *JSONType {
 	}
 
 	return t
+}
+
+func isInt(v float64) bool {
+	return v == float64(int(v))
 }

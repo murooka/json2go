@@ -3,7 +3,7 @@
 package main
 
 type Person struct {
-	Age  float64
+	Age  int
 	Id   string
 	Name string
 }

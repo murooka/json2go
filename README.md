@@ -29,7 +29,7 @@ json2go --package main --typename Person --varname PersonList --output person.go
 package main
 
 type Person struct {
-	Age  float64
+	Age  int
 	Id   string
 	Name string
 }
