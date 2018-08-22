@@ -48,7 +48,7 @@ func (t *JSONType) ToGoType() string {
 
 		for _, key := range keys {
 			typ := t.Object[key]
-			s += fmt.Sprintf("%s %s\n", strcase.ToCamel(key), typ.ToGoType())
+			s += fmt.Sprintf("%s %s `json:\"%s\"`\n", strcase.ToCamel(key), typ.ToGoType(), key)
 		}
 		s += fmt.Sprintf("}\n")
 		return s

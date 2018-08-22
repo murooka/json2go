@@ -3,9 +3,9 @@
 package main
 
 type Person struct {
-	Age  int
-	Id   string
-	Name string
+	Age  int    `json:"age"`
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }
 
 var PersonList = []Person{

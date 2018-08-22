@@ -29,9 +29,9 @@ json2go --package main --typename Person --varname PersonList --output person.go
 package main
 
 type Person struct {
-	Age  int
-	Id   string
-	Name string
+	Age  int    `json:"age"`
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }
 
 var PersonList = []Person{
