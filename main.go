@@ -56,7 +56,7 @@ func main() {
 	if opts.Fields != "" {
 		fields := strings.Split(opts.Fields, ",")
 		sort.Strings(fields)
-		v = filterFields(v, fields)
+		filterFields(v, fields)
 	}
 
 	typ, err := detectTypeOfItem(v)
@@ -64,9 +64,9 @@ func main() {
 		log.Fatalf("failed to detect JSON type: %s", err)
 	}
 
-	g := NewGenerator(strings.Join(os.Args, " "), opts.Package, opts.TypeName, opts.VarName, typ, v)
+	g := NewGenerator()
 
-	src, err := g.Generate()
+	src, err := g.Generate(strings.Join(os.Args, " "), opts.Package, opts.TypeName, opts.VarName, typ, v)
 	if err != nil {
 		log.Fatalf("failed to format output source code: %s", err)
 	}
@@ -103,7 +103,7 @@ func loadJSON(filename string) (interface{}, error) {
 	return v, nil
 }
 
-func filterFields(v interface{}, fields []string) interface{} {
+func filterFields(v interface{}, fields []string) {
 	fieldMap := map[string]bool{}
 	for _, field := range fields {
 		fieldMap[field] = true
@@ -118,5 +118,4 @@ func filterFields(v interface{}, fields []string) interface{} {
 			}
 		}
 	}
-	return v
 }
