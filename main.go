@@ -75,10 +75,13 @@ func main() {
 	if opts.Output == "-" {
 		out = os.Stdout
 	} else {
-		out, err = os.Create(opts.Output)
+		f, err := os.Create(opts.Output)
 		if err != nil {
 			log.Fatalf("failed to open file: %s", err)
 		}
+		defer f.Close()
+
+		out = f
 	}
 
 	out.Write(src)
