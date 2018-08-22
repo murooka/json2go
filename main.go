@@ -47,24 +47,24 @@ func main() {
 		log.Fatal("--varname must be specified")
 	}
 
-	var fields []string
-	if opts.Fields != "" {
-		fields = strings.Split(opts.Fields, ",")
-		sort.Strings(fields)
-	}
-
 	filename := args[0]
 	v, err := loadJSON(filename)
 	if err != nil {
 		log.Fatalf("failed to parse JSON: %s", err)
 	}
 
-	typ, err := detectTypeOfItem(v, fields)
+	if opts.Fields != "" {
+		fields := strings.Split(opts.Fields, ",")
+		sort.Strings(fields)
+		v = filterFields(v, fields)
+	}
+
+	typ, err := detectTypeOfItem(v)
 	if err != nil {
 		log.Fatalf("failed to detect JSON type: %s", err)
 	}
 
-	g := NewGenerator(strings.Join(os.Args, " "), opts.Package, opts.TypeName, opts.VarName, typ, v, fields)
+	g := NewGenerator(strings.Join(os.Args, " "), opts.Package, opts.TypeName, opts.VarName, typ, v)
 
 	src, err := g.Generate()
 	if err != nil {
@@ -98,4 +98,22 @@ func loadJSON(filename string) (interface{}, error) {
 	}
 
 	return v, nil
+}
+
+func filterFields(v interface{}, fields []string) interface{} {
+	fieldMap := map[string]bool{}
+	for _, field := range fields {
+		fieldMap[field] = true
+	}
+
+	a := v.([]interface{})
+	for _, obj := range a {
+		obj := obj.(map[string]interface{})
+		for key := range obj {
+			if !fieldMap[key] {
+				delete(obj, key)
+			}
+		}
+	}
+	return v
 }

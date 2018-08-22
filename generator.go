@@ -18,10 +18,9 @@ type Generator struct {
 	varName  string
 	typ      *JSONType
 	v        interface{}
-	fields   []string
 }
 
-func NewGenerator(cmd string, pkg string, typeName, varName string, typ *JSONType, v interface{}, fields []string) *Generator {
+func NewGenerator(cmd string, pkg string, typeName, varName string, typ *JSONType, v interface{}) *Generator {
 	return &Generator{
 		buf:      &bytes.Buffer{},
 		cmd:      cmd,
@@ -30,7 +29,6 @@ func NewGenerator(cmd string, pkg string, typeName, varName string, typ *JSONTyp
 		varName:  varName,
 		typ:      typ,
 		v:        v,
-		fields:   fields,
 	}
 }
 
@@ -65,16 +63,11 @@ func (g *Generator) toLiteral(v interface{}, typ *JSONType) string {
 			panic("assertion error")
 		}
 
-		var keys []string
-		if g.fields == nil {
-			keys = make([]string, 0, len(v))
-			for k := range v {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-		} else {
-			keys = g.fields
+		keys := make([]string, 0, len(v))
+		for k := range v {
+			keys = append(keys, k)
 		}
+		sort.Strings(keys)
 
 		buf := &bytes.Buffer{}
 		buf.WriteString("{\n")
