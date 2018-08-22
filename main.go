@@ -174,7 +174,6 @@ func (g *Generator) toLiteral(v interface{}, typ *JSONType) string {
 	case string:
 		return strconv.Quote(v)
 	case float64:
-		// TODO
 		return strconv.FormatFloat(v, 'f', -1, 64)
 	case bool:
 		return strconv.FormatBool(v)
@@ -192,5 +191,4 @@ func (g *Generator) Printlnf(format string, args ...interface{}) {
 
 func (g *Generator) Generate() ([]byte, error) {
 	return format.Source(g.buf.Bytes())
-	return g.buf.Bytes(), nil
 }
