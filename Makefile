@@ -3,5 +3,5 @@
 install:
 	go install github.com/murooka/json2go
 
-build-test:
-	json2go --package main --typename Person --varname PersonList --output testdata/person.go testdata/persons.json
+build-test: install
+	for dir in ./testdata/*; do cd $$dir; json2go --package main --typename Example --varname Examples --output example.go example.json; cd ../../; done

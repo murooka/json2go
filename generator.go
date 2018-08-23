@@ -87,7 +87,7 @@ func (g *Generator) toLiteral(v interface{}, typ *JSONType) string {
 	case bool:
 		return strconv.FormatBool(v)
 	case nil:
-		return "null"
+		return "nil"
 	}
 
 	panic(fmt.Sprintf("unknown type of value: %#v", v))
