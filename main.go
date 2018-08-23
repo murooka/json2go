@@ -31,8 +31,6 @@ func main() {
 
 	if len(args) == 0 {
 		log.Fatal("argument is not found")
-	} else if len(args) > 1 {
-		log.Fatalf("too many arguments: %v", args)
 	}
 
 	if opts.Package == "" {
@@ -47,8 +45,7 @@ func main() {
 		log.Fatal("--varname must be specified")
 	}
 
-	filename := args[0]
-	v, err := loadJSON(filename)
+	v, err := loadJSON(args)
 	if err != nil {
 		log.Fatalf("failed to parse JSON: %s", err)
 	}
@@ -87,18 +84,31 @@ func main() {
 	out.Write(src)
 }
 
-func loadJSON(filename string) (interface{}, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		log.Fatalf("failed to open file: %s", err)
+func loadJSON(filenames []string) (interface{}, error) {
+	items := make([]interface{}, 0)
+
+	for _, filename := range filenames {
+		f, err := os.Open(filename)
+		if err != nil {
+			log.Fatalf("failed to open file: %s", err)
+		}
+		defer f.Close()
+
+		var v interface{}
+		err = json.NewDecoder(f).Decode(&v)
+		if err != nil {
+			log.Fatalf("failed to decode JSON: %s", err)
+		}
+
+		// TODO: consider map
+		a := v.([]interface{})
+		for _, e := range a {
+			items = append(items, e)
+		}
 	}
-	defer f.Close()
 
 	var v interface{}
-	err = json.NewDecoder(f).Decode(&v)
-	if err != nil {
-		log.Fatalf("failed to decode JSON: %s", err)
-	}
+	v = items
 
 	return v, nil
 }
