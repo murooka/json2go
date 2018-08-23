@@ -1,0 +1,16 @@
+{
+    "data": {
+        "persons": [
+            {
+                "id": "3a98ee9c-6b60-4239-9d12-cbd637a904c9",
+                "name": "alice",
+                "age": 33
+            },
+            {
+                "id": "cf17db3d-0cae-44c7-91a1-d834785a25e6",
+                "name": "bob",
+                "age": 19
+            }
+        ]
+    }
+}

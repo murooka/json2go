@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/jessevdk/go-flags"
+	"github.com/xeipuuv/gojsonpointer"
 )
 
 func main() {
@@ -17,6 +19,7 @@ func main() {
 		TypeName string `long:"typename"`
 		VarName  string `long:"varname"`
 		Package  string `long:"package"`
+		Root     string `long:"root"`
 		Fields   string `long:"fields"`
 	}
 
@@ -45,7 +48,7 @@ func main() {
 		log.Fatal("--varname must be specified")
 	}
 
-	v, err := loadJSON(args)
+	v, err := loadJSON(args, opts.Root)
 	if err != nil {
 		log.Fatalf("failed to parse JSON: %s", err)
 	}
@@ -84,8 +87,13 @@ func main() {
 	out.Write(src)
 }
 
-func loadJSON(filenames []string) (interface{}, error) {
+func loadJSON(filenames []string, root string) (interface{}, error) {
 	items := make([]interface{}, 0)
+
+	pointer, err := gojsonpointer.NewJsonPointer(root)
+	if err != nil {
+		return nil, fmt.Errorf("invalid json pointer: %s", err)
+	}
 
 	for _, filename := range filenames {
 		f, err := os.Open(filename)
@@ -98,6 +106,11 @@ func loadJSON(filenames []string) (interface{}, error) {
 		err = json.NewDecoder(f).Decode(&v)
 		if err != nil {
 			log.Fatalf("failed to decode JSON: %s", err)
+		}
+
+		v, _, err = pointer.Get(v)
+		if err != nil {
+			log.Fatalf("failed to get root value: %s", err)
 		}
 
 		// TODO: consider map
