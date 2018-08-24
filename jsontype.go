@@ -102,18 +102,40 @@ func (t *JSONType) Merge(u *JSONType) *JSONType {
 	return res
 }
 
-func detectTypeOfItem(v interface{}) (*JSONType, error) {
-	a, ok := v.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("root value must be array")
+func detectTypeInStructure(v interface{}, structurePaths []string) (*JSONType, error) {
+	if len(structurePaths) == 0 {
+		return detectType(v), nil
 	}
 
-	var typ *JSONType = nil
-	for _, e := range a {
-		typ = typ.Merge(detectType(e))
+	switch structurePaths[0] {
+	case "slice":
+		a, ok := v.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("expected JSON array, but got non-array value")
+		}
+
+		var typ *JSONType = nil
+		for _, e := range a {
+			typ = typ.Merge(detectType(e))
+		}
+
+		return typ, nil
+	case "map":
+		m, ok := v.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("expected JSON object, but got non-object value")
+		}
+
+		var typ *JSONType = nil
+		for _, e := range m {
+			typ = typ.Merge(detectType(e))
+		}
+
+		return typ, nil
 	}
 
-	return typ, nil
+	panic(fmt.Sprintf("assertion error: unexpected structure type: %s", structurePaths[0]))
+
 }
 
 func detectType(v interface{}) *JSONType {

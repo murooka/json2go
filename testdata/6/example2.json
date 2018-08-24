@@ -1,0 +1,13 @@
+{
+    "data": {
+        "personGroups": {
+            "groupB": {
+                "charley": {
+                    "id": "7c6f9333-79e9-4d6b-84fd-5da3d28e3e19",
+                    "name": "charley",
+                    "age": 53
+                }
+            }
+        }
+    }
+}
