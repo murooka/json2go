@@ -15,12 +15,13 @@ import (
 
 func main() {
 	var opts struct {
-		Output   string `long:"output" default:"-"`
-		TypeName string `long:"typename"`
-		VarName  string `long:"varname"`
-		Package  string `long:"package"`
-		Root     string `long:"root"`
-		Fields   string `long:"fields"`
+		Output    string `long:"output" default:"-"`
+		TypeName  string `long:"typename"`
+		VarName   string `long:"varname"`
+		Package   string `long:"package"`
+		Root      string `long:"root"`
+		Structure string `long:"structure" default:"slice"`
+		Fields    string `long:"fields"`
 	}
 
 	args, err := flags.Parse(&opts)
@@ -48,7 +49,14 @@ func main() {
 		log.Fatal("--varname must be specified")
 	}
 
-	v, err := loadJSON(args, opts.Root)
+	structurePaths := strings.Split(opts.Structure, ",")
+	for _, path := range structurePaths {
+		if path != "slice" && path != "map" {
+			log.Fatalf(`--structure must be constructed either "slice" or "map"`)
+		}
+	}
+
+	v, err := loadJSON(args, opts.Root, structurePaths)
 	if err != nil {
 		log.Fatalf("failed to parse JSON: %s", err)
 	}
@@ -59,14 +67,14 @@ func main() {
 		filterFields(v, fields)
 	}
 
-	typ, err := detectTypeOfItem(v)
+	typ, err := detectTypeInStructure(v, structurePaths)
 	if err != nil {
 		log.Fatalf("failed to detect JSON type: %s", err)
 	}
 
 	g := NewGenerator()
 
-	src, err := g.Generate(strings.Join(os.Args, " "), opts.Package, opts.TypeName, opts.VarName, typ, v)
+	src, err := g.Generate(strings.Join(os.Args, " "), opts.Package, opts.TypeName, opts.VarName, typ, structurePaths, v)
 	if err != nil {
 		log.Fatalf("failed to format output source code: %s", err)
 	}
@@ -87,8 +95,8 @@ func main() {
 	out.Write(src)
 }
 
-func loadJSON(filenames []string, root string) (interface{}, error) {
-	items := make([]interface{}, 0)
+func loadJSON(filenames []string, root string, structurePaths []string) (interface{}, error) {
+	vs := make([]interface{}, 0, len(filenames))
 
 	pointer, err := gojsonpointer.NewJsonPointer(root)
 	if err != nil {
@@ -113,17 +121,110 @@ func loadJSON(filenames []string, root string) (interface{}, error) {
 			log.Fatalf("failed to get root value: %s", err)
 		}
 
-		// TODO: consider map
-		a := v.([]interface{})
-		for _, e := range a {
-			items = append(items, e)
+		vs = append(vs, v)
+	}
+
+	if err := validateStructures(vs, structurePaths); err != nil {
+		return nil, err
+	}
+
+	return mergeJSONs(vs, structurePaths), nil
+}
+
+func validateStructures(vs []interface{}, structurePaths []string) error {
+	for _, v := range vs {
+		if err := validateStructure(v, structurePaths); err != nil {
+			return err
 		}
 	}
 
-	var v interface{}
-	v = items
+	return nil
+}
 
-	return v, nil
+func validateStructure(v interface{}, structurePaths []string) error {
+	if len(structurePaths) == 0 {
+		return nil
+	}
+
+	// TODO: explicit error message
+	path := structurePaths[0]
+	switch path {
+	case "slice":
+		a, ok := v.([]interface{})
+		if !ok {
+			fmt.Errorf("structure path is slice, but got non-array value")
+		}
+
+		for _, e := range a {
+			if err := validateStructure(e, structurePaths[1:]); err != nil {
+				return err
+			}
+		}
+
+		break
+	case "map":
+		m, ok := v.(map[string]interface{})
+		if !ok {
+			fmt.Errorf("structure path is map, but got non-object value")
+		}
+
+		for _, e := range m {
+			if err := validateStructure(e, structurePaths[1:]); err != nil {
+				return err
+			}
+		}
+
+		break
+	default:
+		panic("assertion error")
+	}
+
+	return nil
+}
+
+func mergeJSONs(vs []interface{}, structurePaths []string) interface{} {
+	if len(structurePaths) == 0 {
+		return vs[len(vs)-1]
+	}
+
+	switch structurePaths[0] {
+	case "slice":
+		ret := make([]interface{}, 0)
+		for _, v := range vs {
+			a := v.([]interface{})
+
+			for _, e := range a {
+				ret = append(ret, e)
+			}
+		}
+
+		return ret
+	case "map":
+		keyMap := map[string]struct{}{}
+		for _, v := range vs {
+			m := v.(map[string]interface{})
+			for k := range m {
+				keyMap[k] = struct{}{}
+			}
+		}
+
+		ret := make(map[string]interface{})
+		for key := range keyMap {
+			cs := make([]interface{}, 0, len(vs))
+			for _, v := range vs {
+				m := v.(map[string]interface{})
+				e, ok := m[key]
+				if ok {
+					cs = append(cs, e)
+				}
+			}
+			ret[key] = mergeJSONs(cs, structurePaths[1:])
+		}
+
+		return ret
+	}
+
+	panic(fmt.Sprintf("assertion error: unexpected structure type: %s", structurePaths[0]))
 }
 
 func filterFields(v interface{}, fields []string) {
