@@ -68,8 +68,15 @@ func (g *Generator) printStructure(structurePaths []string, typ *JSONType, v int
 	case "map":
 		m := v.(map[string]interface{})
 
+		ks := make([]string, 0, len(m))
+		for k := range m {
+			ks = append(ks, k)
+		}
+		sort.Strings(ks)
+
 		g.Printlnf("{")
-		for k, e := range m {
+		for _, k := range ks {
+			e := m[k]
 			g.Printf(`%s: `, strconv.Quote(k))
 			g.printStructure(structurePaths[1:], typ, e)
 			g.Println(",")
