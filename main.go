@@ -15,22 +15,18 @@ import (
 
 func main() {
 	var opts struct {
-		Output    string `long:"output" default:"-"`
-		TypeName  string `long:"typename"`
-		VarName   string `long:"varname"`
-		Package   string `long:"package"`
-		Root      string `long:"root"`
-		Structure string `long:"structure" default:"slice"`
-		Fields    string `long:"fields"`
+		Output    string `long:"output"    description:"output filepath" default:"-"`
+		TypeName  string `long:"typename"  description:"type name to be generated"`
+		VarName   string `long:"varname"   description:"variable name to be generated"`
+		Package   string `long:"package"   description:"output package name"`
+		Root      string `long:"root"      description:"JSON pointer specifing root object or array"`
+		Structure string `long:"structure" description:"comma separated \"map\" or \"slice\" sequence" default:"slice"`
+		Fields    string `long:"fields"    description:"comma separated target property names"`
 	}
 
 	args, err := flags.Parse(&opts)
 	if err != nil {
-		if err := err.(*flags.Error); err.Type == flags.ErrHelp {
-			os.Exit(1)
-		} else {
-			log.Fatalf("failed to parse arguments: %s", err)
-		}
+		os.Exit(1)
 	}
 
 	if len(args) == 0 {
