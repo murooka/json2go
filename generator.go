@@ -21,19 +21,7 @@ type {{.TypeName}} {{.TypeDef}}
 var {{.VarName}} = {{.VarDef}}
 `
 
-type Generator struct {
-	buf *bytes.Buffer
-}
-
-func NewGenerator() *Generator {
-	return &Generator{
-		buf: &bytes.Buffer{},
-	}
-}
-
-func (g *Generator) Generate(cmd string, pkg string, typeName, varName string, typ *JSONType, structurePaths []string, v interface{}) ([]byte, error) {
-	g.printStructure(structurePaths, typ, v)
-
+func Generate(cmd string, pkg string, typeName, varName string, typ *JSONType, structurePaths []string, v interface{}) ([]byte, error) {
 	tmpl := template.Must(template.New("output").Parse(outputTmpl))
 	buf := &bytes.Buffer{}
 	err := tmpl.Execute(buf, map[string]interface{}{
@@ -42,13 +30,19 @@ func (g *Generator) Generate(cmd string, pkg string, typeName, varName string, t
 		"TypeName": typeName,
 		"TypeDef":  typ.ToGoType(),
 		"VarName":  varName,
-		"VarDef":   makeVarType(typeName, structurePaths) + g.buf.String(),
+		"VarDef":   makeVarDef(typeName, typ, v, structurePaths),
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return format.Source(buf.Bytes())
+}
+
+func makeVarDef(typeName string, typ *JSONType, v interface{}, structurePaths []string) string {
+	buf := NewExtBuffer()
+	makeVarBody(buf, typ, v, structurePaths)
+	return makeVarType(typeName, structurePaths) + buf.String()
 }
 
 func makeVarType(typeName string, structurePaths []string) string {
@@ -66,9 +60,9 @@ func makeVarType(typeName string, structurePaths []string) string {
 	panic("assertion error")
 }
 
-func (g *Generator) printStructure(structurePaths []string, typ *JSONType, v interface{}) {
+func makeVarBody(b *ExtBuffer, typ *JSONType, v interface{}, structurePaths []string) {
 	if len(structurePaths) == 0 {
-		g.Printf(g.toLiteral(v, typ))
+		b.Printf(toLiteral(v, typ))
 		return
 	}
 
@@ -76,12 +70,12 @@ func (g *Generator) printStructure(structurePaths []string, typ *JSONType, v int
 	case "slice":
 		a := v.([]interface{})
 
-		g.Println("{")
+		b.Println("{")
 		for _, e := range a {
-			g.printStructure(structurePaths[1:], typ, e)
-			g.Println(",")
+			makeVarBody(b, typ, e, structurePaths[1:])
+			b.Println(",")
 		}
-		g.Print("}")
+		b.Print("}")
 	case "map":
 		m := v.(map[string]interface{})
 
@@ -91,37 +85,19 @@ func (g *Generator) printStructure(structurePaths []string, typ *JSONType, v int
 		}
 		sort.Strings(ks)
 
-		g.Println("{")
+		b.Println("{")
 		for _, k := range ks {
 			e := m[k]
-			g.Printf(`%s: `, strconv.Quote(k))
-			g.printStructure(structurePaths[1:], typ, e)
-			g.Println(",")
+			b.Printf(`%s: `, strconv.Quote(k))
+			makeVarBody(b, typ, e, structurePaths[1:])
+			b.Println(",")
 		}
-		g.Print("}")
+		b.Print("}")
 	}
 
 }
 
-func (g *Generator) Print(s string) {
-	g.buf.WriteString(s)
-}
-
-func (g *Generator) Println(s string) {
-	g.buf.WriteString(s)
-	g.buf.WriteByte('\n')
-}
-
-func (g *Generator) Printf(format string, args ...interface{}) {
-	g.buf.WriteString(fmt.Sprintf(format, args...))
-}
-
-func (g *Generator) Printlnf(format string, args ...interface{}) {
-	g.buf.WriteString(fmt.Sprintf(format, args...))
-	g.buf.WriteByte('\n')
-}
-
-func (g *Generator) toLiteral(v interface{}, typ *JSONType) string {
+func toLiteral(v interface{}, typ *JSONType) string {
 	switch v := v.(type) {
 	case map[string]interface{}:
 		if typ.Object == nil {
@@ -140,7 +116,7 @@ func (g *Generator) toLiteral(v interface{}, typ *JSONType) string {
 			e := v[k]
 			ctyp := typ.Object[k]
 			buf.WriteString(fmt.Sprintf("%s: %s,\n", strcase.ToCamel(
-				k), g.toLiteral(e, ctyp)))
+				k), toLiteral(e, ctyp)))
 		}
 		buf.WriteString("}")
 		return buf.String()
@@ -152,7 +128,7 @@ func (g *Generator) toLiteral(v interface{}, typ *JSONType) string {
 		buf := &bytes.Buffer{}
 		buf.WriteString(fmt.Sprintf("[]%s{\n", typ.Array.ToGoType()))
 		for _, e := range v {
-			buf.WriteString(g.toLiteral(e, typ.Array))
+			buf.WriteString(toLiteral(e, typ.Array))
 			buf.WriteString(",\n")
 		}
 		buf.WriteString("}")

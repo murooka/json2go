@@ -68,9 +68,7 @@ func main() {
 		log.Fatalf("failed to detect JSON type: %s", err)
 	}
 
-	g := NewGenerator()
-
-	src, err := g.Generate(strings.Join(os.Args, " "), opts.Package, opts.TypeName, opts.VarName, typ, structurePaths, v)
+	src, err := Generate(strings.Join(os.Args, " "), opts.Package, opts.TypeName, opts.VarName, typ, structurePaths, v)
 	if err != nil {
 		log.Fatalf("failed to format output source code: %s", err)
 	}
