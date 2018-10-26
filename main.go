@@ -63,11 +63,7 @@ func main() {
 		filterFields(v, fields)
 	}
 
-	typ, err := detectTypeInStructure(v, structurePaths)
-	if err != nil {
-		log.Fatalf("failed to detect JSON type: %s", err)
-	}
-
+	typ := detectTypeInStructure(v, structurePaths)
 	src, err := Generate(strings.Join(os.Args, " "), opts.Package, opts.TypeName, opts.VarName, typ, structurePaths, v)
 	if err != nil {
 		log.Fatalf("failed to format output source code: %s", err)
@@ -141,8 +137,9 @@ func validateStructure(v interface{}, structurePaths []string) error {
 	}
 
 	// TODO: explicit error message
-	path := structurePaths[0]
-	switch path {
+	head := structurePaths[0]
+	tail := structurePaths[1:]
+	switch head {
 	case "slice":
 		a, ok := v.([]interface{})
 		if !ok {
@@ -150,12 +147,10 @@ func validateStructure(v interface{}, structurePaths []string) error {
 		}
 
 		for _, e := range a {
-			if err := validateStructure(e, structurePaths[1:]); err != nil {
+			if err := validateStructure(e, tail); err != nil {
 				return err
 			}
 		}
-
-		break
 	case "map":
 		m, ok := v.(map[string]interface{})
 		if !ok {
@@ -163,14 +158,10 @@ func validateStructure(v interface{}, structurePaths []string) error {
 		}
 
 		for _, e := range m {
-			if err := validateStructure(e, structurePaths[1:]); err != nil {
+			if err := validateStructure(e, tail); err != nil {
 				return err
 			}
 		}
-
-		break
-	default:
-		panic("assertion error")
 	}
 
 	return nil
@@ -181,13 +172,13 @@ func mergeJSONs(vs []interface{}, structurePaths []string) interface{} {
 		return vs[len(vs)-1]
 	}
 
-	switch structurePaths[0] {
+	head := structurePaths[0]
+	tail := structurePaths[1:]
+	switch head {
 	case "slice":
 		ret := make([]interface{}, 0)
 		for _, v := range vs {
-			a := v.([]interface{})
-
-			for _, e := range a {
+			for _, e := range v.([]interface{}) {
 				ret = append(ret, e)
 			}
 		}
@@ -196,8 +187,7 @@ func mergeJSONs(vs []interface{}, structurePaths []string) interface{} {
 	case "map":
 		keyMap := map[string]struct{}{}
 		for _, v := range vs {
-			m := v.(map[string]interface{})
-			for k := range m {
+			for k := range v.(map[string]interface{}) {
 				keyMap[k] = struct{}{}
 			}
 		}
@@ -212,7 +202,7 @@ func mergeJSONs(vs []interface{}, structurePaths []string) interface{} {
 					cs = append(cs, e)
 				}
 			}
-			ret[key] = mergeJSONs(cs, structurePaths[1:])
+			ret[key] = mergeJSONs(cs, tail)
 		}
 
 		return ret

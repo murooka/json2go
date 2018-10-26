@@ -52,7 +52,7 @@ func TestDetectTypeOfItem(t *testing.T) {
 			t.Fatalf("unexpected error: %s", err)
 		}
 
-		got, err := detectTypeInStructure(v, []string{"slice"})
+		got := detectTypeInStructure(v, []string{"slice"})
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}

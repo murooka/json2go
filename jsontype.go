@@ -102,48 +102,29 @@ func (t *JSONType) Merge(u *JSONType) *JSONType {
 	return res
 }
 
-func detectTypeInStructure(v interface{}, structurePaths []string) (*JSONType, error) {
+func detectTypeInStructure(v interface{}, structurePaths []string) *JSONType {
 	if len(structurePaths) == 0 {
-		return detectType(v), nil
+		return detectType(v)
 	}
+
+	var typ *JSONType = nil
 
 	switch structurePaths[0] {
 	case "slice":
-		a, ok := v.([]interface{})
-		if !ok {
-			return nil, fmt.Errorf("expected JSON array, but got non-array value")
-		}
-
-		var typ *JSONType = nil
-		for _, e := range a {
-			t, err := detectTypeInStructure(e, structurePaths[1:])
-			if err != nil {
-				return nil, err
-			}
+		for _, e := range v.([]interface{}) {
+			t := detectTypeInStructure(e, structurePaths[1:])
 			typ = typ.Merge(t)
 		}
-
-		return typ, nil
 	case "map":
-		m, ok := v.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("expected JSON object, but got non-object value")
-		}
-
-		var typ *JSONType = nil
-		for _, e := range m {
-			t, err := detectTypeInStructure(e, structurePaths[1:])
-			if err != nil {
-				return nil, err
-			}
+		for _, e := range v.(map[string]interface{}) {
+			t := detectTypeInStructure(e, structurePaths[1:])
 			typ = typ.Merge(t)
 		}
-
-		return typ, nil
+	default:
+		panic(fmt.Sprintf("assertion error: unexpected structure type: %s", structurePaths[0]))
 	}
 
-	panic(fmt.Sprintf("assertion error: unexpected structure type: %s", structurePaths[0]))
-
+	return typ
 }
 
 func detectType(v interface{}) *JSONType {

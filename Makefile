@@ -1,4 +1,4 @@
-.PHONY: install build-test
+.PHONY: help install build-test test
 
 ## show this message
 help:
@@ -11,3 +11,7 @@ install:
 ## build test cases
 build-test: install
 	for dir in ./testdata/*; do cd $$dir; pwd; ./build.sh; cd ../../; done
+
+## run test
+test:
+	go test -v ./...

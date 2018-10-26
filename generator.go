@@ -50,11 +50,13 @@ func makeVarType(typeName string, structurePaths []string) string {
 		return typeName
 	}
 
-	switch structurePaths[0] {
+	head := structurePaths[0]
+	tail := structurePaths[1:]
+	switch head {
 	case "slice":
-		return fmt.Sprintf("[]%s", makeVarType(typeName, structurePaths[1:]))
+		return fmt.Sprintf("[]%s", makeVarType(typeName, tail))
 	case "map":
-		return fmt.Sprintf("map[string]%s", makeVarType(typeName, structurePaths[1:]))
+		return fmt.Sprintf("map[string]%s", makeVarType(typeName, tail))
 	}
 
 	panic("assertion error")
@@ -66,13 +68,15 @@ func makeVarBody(b *ExtBuffer, typ *JSONType, v interface{}, structurePaths []st
 		return
 	}
 
-	switch structurePaths[0] {
+	head := structurePaths[0]
+	tail := structurePaths[1:]
+	switch head {
 	case "slice":
 		a := v.([]interface{})
 
 		b.Println("{")
 		for _, e := range a {
-			makeVarBody(b, typ, e, structurePaths[1:])
+			makeVarBody(b, typ, e, tail)
 			b.Println(",")
 		}
 		b.Print("}")
@@ -89,7 +93,7 @@ func makeVarBody(b *ExtBuffer, typ *JSONType, v interface{}, structurePaths []st
 		for _, k := range ks {
 			e := m[k]
 			b.Printf(`%s: `, strconv.Quote(k))
-			makeVarBody(b, typ, e, structurePaths[1:])
+			makeVarBody(b, typ, e, tail)
 			b.Println(",")
 		}
 		b.Print("}")
