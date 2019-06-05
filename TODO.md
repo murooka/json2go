@@ -1,0 +1,3 @@
+- [x] text/template 使う
+- [ ] nil 対応
+- [ ] ID 問題対応

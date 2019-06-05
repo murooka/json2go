@@ -152,7 +152,7 @@ func detectType(v interface{}) *JSONType {
 	case bool:
 		t.IsBoolean = true
 	case nil:
-		t.Empty = true
+		t.Nullable = true
 	}
 
 	return t

@@ -101,7 +101,45 @@ func makeVarBody(b *ExtBuffer, typ *JSONType, v interface{}, structurePaths []st
 
 }
 
+func makeInitBody(typ *JSONType, v interface{}, varName string, structurePaths []string) string {
+	buf := NewExtBuffer()
+
+	head := structurePaths[0]
+	tail := structurePaths[1:]
+	switch head {
+	case "slice":
+		a := v.([]interface{})
+
+		for i, e := range a {
+			buf.Printlnf(`%s[%d]%s`, varName, i, makePartialAssignStmt(typ, e, tail))
+		}
+	case "map":
+		m := v.(map[string]interface{})
+
+		ks := make([]string, 0, len(m))
+		for k := range m {
+			ks = append(ks, k)
+		}
+		sort.Strings(ks)
+
+		for _, k := range ks {
+			e := m[k]
+			buf.Printlnf(`%s["%s"]%s`, varName, k, makePartialAssignStmt(typ, e, tail))
+		}
+	}
+
+	return buf.String()
+}
+
+func makePartialAssignStmt(typ *JSONType, v interface{}, structurePaths []string) string {
+	return ""
+}
+
 func toLiteral(v interface{}, typ *JSONType) string {
+	if typ.Nullable {
+		return "nil"
+	}
+
 	switch v := v.(type) {
 	case map[string]interface{}:
 		if typ.Object == nil {
